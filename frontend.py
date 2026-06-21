@@ -359,27 +359,26 @@ html, body, [data-testid="stAppViewContainer"],
 """, unsafe_allow_html=True)
 
 
-
 @st.cache_resource(show_spinner=False)
 def load_artifacts():
-    model     = load_model("model.keras")
+    model = load_model("model.keras")
     tokenizer = joblib.load("tokenizer.pkl")
     return model, tokenizer
 
 
+WINDOW_SIZE = 6
 
-
-WINDOW_SIZE = 6   
 
 def predict_next_word(seed_text: str, n_words: int, temperature: float,
                       model, tokenizer) -> tuple[str, list[str]]:
 
-    current_text   = seed_text
+    current_text = seed_text
     predicted_words: list[str] = []
 
     for _ in range(n_words):
         token_list = tokenizer.texts_to_sequences([current_text])[0]
-        token_list = pad_sequences([token_list], maxlen=WINDOW_SIZE, padding="post")
+        token_list = pad_sequences(
+            [token_list], maxlen=WINDOW_SIZE, padding="post")
 
         predicted_proba = model.predict(token_list, verbose=0)[0]
 
@@ -388,13 +387,13 @@ def predict_next_word(seed_text: str, n_words: int, temperature: float,
         if oov_index != -1:
             predicted_proba[oov_index] = 0
 
-        
         predicted_proba = np.asarray(predicted_proba, dtype="float64")
         predicted_proba = np.log(predicted_proba + 1e-7) / temperature
-        exp_preds       = np.exp(predicted_proba)
+        exp_preds = np.exp(predicted_proba)
         predicted_proba = exp_preds / np.sum(exp_preds)
 
-        predicted_index = np.random.choice(len(predicted_proba), p=predicted_proba)
+        predicted_index = np.random.choice(
+            len(predicted_proba), p=predicted_proba)
 
         output_word = ""
         for word, idx in tokenizer.word_index.items():
@@ -403,13 +402,12 @@ def predict_next_word(seed_text: str, n_words: int, temperature: float,
                 break
 
         if output_word:
-            current_text   += " " + output_word
+            current_text += " " + output_word
             predicted_words.append(output_word)
         else:
             break
 
     return current_text, predicted_words
-
 
 
 st.markdown("""
@@ -422,9 +420,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-
-
-
 st.markdown("""
 <p class="hero-eyebrow">Deep Learning · NLP</p>
 <h1 class="hero-title">Predict the<br><span class="accent">next word.</span></h1>
@@ -435,8 +430,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-
-
 with st.spinner("Loading model…"):
     try:
         model, tokenizer = load_artifacts()
@@ -444,9 +437,7 @@ with st.spinner("Loading model…"):
         model_loaded = True
     except Exception as e:
         model_loaded = False
-        load_error   = str(e)
-
-
+        load_error = str(e)
 
 
 with st.container():
@@ -480,9 +471,6 @@ with st.container():
     predict_btn = st.button("✦  Predict", use_container_width=True)
 
 
-
-
-
 if predict_btn:
     if not model_loaded:
         st.error(f"⚠ Could not load model: {load_error}")
@@ -504,14 +492,12 @@ if predict_btn:
                     model, tokenizer,
                 )
 
-
                 st.markdown('<div class="timeline-row"><span class="tpill done">Done</span></div>',
                             unsafe_allow_html=True)
 
-  
-                seed_clean   = seed_text.strip()
+                seed_clean = seed_text.strip()
                 tail_section = full_text[len(seed_clean):]
-                tail_html    = ""
+                tail_html = ""
                 for w in tail_section.split():
                     tail_html += f' <span class="predicted-word">{w}</span>'
 
@@ -540,7 +526,6 @@ if predict_btn:
 
             except Exception as e:
                 st.error(f"Prediction error: {e}")
-
 
 
 st.markdown("""
