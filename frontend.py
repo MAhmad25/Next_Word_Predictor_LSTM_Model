@@ -1,8 +1,13 @@
-import streamlit as st
-import numpy as np
-import joblib
-from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.models import load_model
+import joblib
+import numpy as np
+import streamlit as st
+import os
+import logging
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+logging.getLogger("tensorflow").setLevel(logging.ERROR)
+
 
 st.set_page_config(
     page_title="Next Word Predictor",
@@ -18,147 +23,89 @@ st.markdown("""
 
 <style>
 :root {
-  --primary:          #f54e00;
-  --primary-active:   #d04200;
-  --ink:              #26251e;
-  --body:             #5a5852;
-  --body-strong:      #26251e;
-  --muted:            #807d72;
-  --muted-soft:       #a09c92;
-  --hairline:         #e6e5e0;
-  --hairline-soft:    #efeee8;
-  --hairline-strong:  #cfcdc4;
-  --canvas:           #f7f7f4;
-  --canvas-soft:      #fafaf7;
-  --surface-card:     #ffffff;
-  --surface-strong:   #e6e5e0;
-  --on-primary:       #ffffff;
-  --timeline-thinking:#dfa88f;
-  --timeline-grep:    #9fc9a2;
-  --timeline-read:    #9fbbe0;
-  --timeline-edit:    #c0a8dd;
-  --timeline-done:    #c08532;
-  --semantic-error:   #cf2d56;
-  --semantic-success: #1f8a65;
+  --primary:         #f54e00;
+  --primary-active:  #d04200;
+  --ink:             #26251e;
+  --body:            #5a5852;
+  --body-strong:     #26251e;
+  --muted:           #807d72;
+  --muted-soft:      #a09c92;
+  --hairline:        #e6e5e0;
+  --hairline-soft:   #efeee8;
+  --hairline-strong: #cfcdc4;
+  --canvas:          #f7f7f4;
+  --canvas-soft:     #fafaf7;
+  --surface-card:    #ffffff;
+  --surface-strong:  #e6e5e0;
+  --on-primary:      #ffffff;
+  --timeline-done:   #c08532;
+  --semantic-error:  #cf2d56;
   --font-display: 'Inter', system-ui, 'Helvetica Neue', Arial, sans-serif;
   --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
 }
 
-/* ── Reset / Global ── */
-html, body, [data-testid="stAppViewContainer"],
-[data-testid="stApp"] {
-  background-color: var(--canvas) !important;
+html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
+  background-color: #ffffff !important;
   font-family: var(--font-display) !important;
   color: var(--ink) !important;
 }
 
-/* hide default streamlit chrome */
-#MainMenu, footer, header { visibility: hidden; }
-[data-testid="stDecoration"] { display: none; }
-[data-testid="stToolbar"] { display: none; }
+/* gradient div injected via st.markdown */
+.nwp-gradient {
+  position: fixed;
+  left: 50%;
+  width: 280vw;
+  height: 280vw;
+  top: calc(34svh + 85vw);
+  clip-path: inset(0 0 33.33% 0);
+  filter: blur(40px);
+  background-image: radial-gradient(
+    130vw,
+    rgba(0,0,0,0) 54.8%,
+    rgb(245, 78, 0,0.5) 63%,
+    rgb(245, 78, 0,0.2) 76%,
+    rgb(66,144,217) 95%,
+    rgb(28,8,67) 99%,
+    rgba(0,0,0,0) 100%
+  );
+  transform: translate(-50%, -50%) scale(1);
+  z-index: 0;
+  pointer-events: none;
+}
 
-/* ── Main content container ── */
+#MainMenu, footer, header,
+[data-testid="stDecoration"],
+[data-testid="stToolbar"] { visibility: hidden; display: none; }
+
 .block-container {
   max-width: 760px !important;
   padding: 0 24px 80px !important;
   margin: 0 auto !important;
 }
-
-/* ── Top Nav ── */
-.cursor-nav {
-  display: flex;
+             .center{
+      display: flex;
+  flex-direction: column;
+  justify-content: center; 
   align-items: center;
-  justify-content: space-between;
-  height: 64px;
-  border-bottom: 1px solid var(--hairline);
-  margin-bottom: 80px;
-  padding: 0 4px;
-}
-.cursor-nav-logo {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink);
-  letter-spacing: -0.3px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.cursor-nav-logo span.orange { color: var(--primary); }
-.cursor-nav-badge {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.88px;
-  text-transform: uppercase;
-  background: var(--surface-strong);
-  color: var(--ink);
-  border-radius: 9999px;
-  padding: 4px 10px;
-}
+            width:100%;
+            }
 
-/* ── Hero section ── */
+/* hero */
 .hero-eyebrow {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.88px;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 16px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.88px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 16px;
 }
 .hero-title {
-  font-family: var(--font-display);
-  font-size: 56px;
-  font-weight: 400;
-  line-height: 1.1;
-  letter-spacing: -1.68px;
-  color: var(--ink);
-  margin-bottom: 20px;
+  font-size: 56px; font-weight: 400; line-height: 1.1; width: 100%;
+  letter-spacing: -1.68px; color: var(--ink); 
 }
 .hero-title .accent { color: var(--primary); }
 .hero-sub {
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 1.6;
-  color: var(--body);
-  max-width: 520px;
-  margin-bottom: 48px;
+  font-size: 16px; line-height: 1.6; color: var(--ink);
+  max-width: 520px; margin-bottom: 48px;
 }
 
-/* ── Input card / IDE pane ── */
-.ide-card {
-  background: var(--surface-card);
-  border-radius: 12px;
-  border: 1px solid var(--hairline);
-  overflow: hidden;
-  margin-bottom: 24px;
-}
-.ide-card-header {
-  background: var(--canvas-soft);
-  border-bottom: 1px solid var(--hairline);
-  padding: 12px 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.ide-dot {
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  background: var(--hairline-strong);
-}
-.ide-dot.red   { background: #ff5f57; }
-.ide-dot.yellow{ background: #febc2e; }
-.ide-dot.green { background: #28c840; }
-.ide-label {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--muted);
-  margin-left: auto;
-}
-.ide-card-body {
-  padding: 24px 28px;
-}
-
-/* ── Override Streamlit text_area ── */
+/* textarea */
 [data-testid="stTextArea"] textarea {
   font-family: var(--font-mono) !important;
   font-size: 14px !important;
@@ -176,301 +123,133 @@ html, body, [data-testid="stAppViewContainer"],
   box-shadow: 0 0 0 3px rgba(245,78,0,0.08) !important;
 }
 [data-testid="stTextArea"] label {
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: var(--body-strong) !important;
-  margin-bottom: 8px !important;
+  font-size: 13px !important; font-weight: 600 !important;
+  color: var(--body-strong) !important; margin-bottom: 8px !important;
 }
 
-/* ── Override Streamlit slider ── */
-[data-testid="stSlider"] label {
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: var(--body-strong) !important;
-}
-[data-testid="stSlider"] [data-baseweb="slider"] [role="slider"] {
-  background: var(--primary) !important;
-}
-
-/* ── Override Streamlit number_input ── */
-[data-testid="stNumberInput"] label {
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: var(--body-strong) !important;
-}
-[data-testid="stNumberInput"] input {
-  font-family: var(--font-mono) !important;
-  font-size: 14px !important;
-  border-radius: 8px !important;
-  border: 1px solid var(--hairline-strong) !important;
-  background: var(--canvas-soft) !important;
-  color: var(--ink) !important;
-}
-
-/* ── Primary CTA button ── */
+/* button */
 [data-testid="stButton"] > button {
   background: var(--primary) !important;
   color: var(--on-primary) !important;
   font-family: var(--font-display) !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  border-radius: 8px !important;
-  border: none !important;
-  padding: 10px 24px !important;
-  height: 44px !important;
-  letter-spacing: 0 !important;
-  transition: background 0.15s ease !important;
-  width: 100% !important;
+  font-size: 14px !important; font-weight: 500 !important;
+  border-radius: 8px !important; border: none !important;
+  padding: 10px 24px !important; height: 44px !important;
+  transition: background 0.15s ease !important; width: 100% !important;
 }
-[data-testid="stButton"] > button:hover {
-  background: var(--primary-active) !important;
-}
+[data-testid="stButton"] > button:hover,
 [data-testid="stButton"] > button:active {
   background: var(--primary-active) !important;
 }
 
-/* ── Result output card ── */
-.result-card {
-  background: var(--surface-card);
-  border-radius: 12px;
-  border: 1px solid var(--hairline);
-  padding: 28px;
-  margin-top: 24px;
+/* timeline */
+.timeline-row {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap; margin-bottom: 16px;
 }
-.result-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
+.tpill {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.88px;
+  text-transform: uppercase; border-radius: 9999px;
+  padding: 4px 12px; color: var(--ink);
+}
+.tpill.thinking { background: #dfa88f; }
+.tpill.reading  { background: #9fbbe0; }
+.tpill.editing  { background: #c0a8dd; }
+.tpill.done     { background: var(--timeline-done); color: #fff; }
+
+/* result */
+.result-card {
+  background: var(--surface-card); border-radius: 12px;
+  border: 1px solid var(--hairline); padding: 28px; margin-top: 24px;
 }
 .result-title {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.88px;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: 13px; font-weight: 600; letter-spacing: 0.88px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 20px;
 }
 .result-text {
-  font-family: var(--font-mono);
-  font-size: 15px;
-  line-height: 1.7;
-  color: var(--ink);
-  background: var(--canvas-soft);
-  border-radius: 8px;
-  padding: 18px 20px;
-  border: 1px solid var(--hairline-soft);
+  font-family: var(--font-mono); font-size: 15px; line-height: 1.7;
+  color: var(--ink); background: var(--canvas-soft); border-radius: 8px;
+  padding: 18px 20px; border: 1px solid var(--hairline-soft);
   word-break: break-word;
 }
 .result-text .predicted-word {
-  color: var(--primary);
-  font-weight: 600;
-  background: rgba(245,78,0,0.07);
-  border-radius: 4px;
-  padding: 1px 5px;
+  color: var(--primary); font-weight: 600;
+  background: rgba(245,78,0,0.07); border-radius: 4px; padding: 1px 5px;
 }
 
-/* ── Timeline pills ── */
-.timeline-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-.tpill {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.88px;
-  text-transform: uppercase;
-  border-radius: 9999px;
-  padding: 4px 12px;
-  color: var(--ink);
-}
-.tpill.thinking { background: var(--timeline-thinking); }
-.tpill.reading  { background: var(--timeline-read); }
-.tpill.editing  { background: var(--timeline-edit); }
-.tpill.done     { background: var(--timeline-done); color: #fff; }
-
-/* ── Metrics row ── */
-.metrics-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 20px;
-}
-.metric-cell {
-  background: var(--canvas-soft);
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-  padding: 16px;
-  text-align: center;
-}
-.metric-value {
-  font-family: var(--font-mono);
-  font-size: 22px;
-  font-weight: 400;
-  color: var(--ink);
-  letter-spacing: -0.5px;
-}
-.metric-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.88px;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-top: 4px;
-}
-
-/* ── Section divider ── */
-.divider {
-  border: none;
-  border-top: 1px solid var(--hairline);
-  margin: 48px 0;
-}
-
-/* ── Footer ── */
+/* footer */
 .cursor-footer {
-  margin-top: 80px;
-  padding-top: 32px;
+  margin-top: 80px; padding-top: 32px;
   border-top: 1px solid var(--hairline);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between;
 }
-.footer-left {
-  font-size: 13px;
-  color: var(--muted);
-}
+.footer-left  { font-size: 13px; color: var(--muted); }
 .footer-right {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.88px;
-  text-transform: uppercase;
-  color: var(--muted-soft);
-}
-
-/* ── Error / info alerts ── */
-[data-testid="stAlert"] {
-  border-radius: 8px !important;
-  border: 1px solid var(--hairline-strong) !important;
-  background: var(--canvas-soft) !important;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.88px;
+  text-transform: uppercase; color: var(--muted-soft);
 }
 </style>
 """, unsafe_allow_html=True)
 
+# ── gradient div ──────────────────────────────────────────────────────────────
+st.markdown('<div class="nwp-gradient"></div>', unsafe_allow_html=True)
+
 
 @st.cache_resource(show_spinner=False)
 def load_artifacts():
-    model = load_model("model.keras")
-    tokenizer = joblib.load("tokenizer.pkl")
-    return model, tokenizer
+    return load_model("model.keras"), joblib.load("tokenizer.pkl")
 
 
 WINDOW_SIZE = 6
+TEMPERATURE = 0.3
+
+try:
+    model, tokenizer = load_artifacts()
+    vocab_size = len(tokenizer.word_index) + 1
+    model_loaded = True
+except Exception as e:
+    model_loaded = False
+    load_error = str(e)
 
 
-def predict_next_word(seed_text: str, n_words: int, temperature: float,
-                      model, tokenizer) -> tuple[str, list[str]]:
+def predict_next_word(seed_text: str) -> str:
+    token_list = tokenizer.texts_to_sequences([seed_text])[0]
+    token_list = pad_sequences(
+        [token_list], maxlen=WINDOW_SIZE, padding="post")
+    proba = model.predict(token_list, verbose=0)[0]
 
-    current_text = seed_text
-    predicted_words: list[str] = []
+    proba[0] = 0
+    oov = tokenizer.word_index.get("<OOV>", -1)
+    if oov != -1:
+        proba[oov] = 0
 
-    for _ in range(n_words):
-        token_list = tokenizer.texts_to_sequences([current_text])[0]
-        token_list = pad_sequences(
-            [token_list], maxlen=WINDOW_SIZE, padding="post")
+    proba = np.asarray(proba, dtype="float64")
+    proba = np.log(proba + 1e-7) / TEMPERATURE
+    proba = np.exp(proba)
+    proba = proba / np.sum(proba)
 
-        predicted_proba = model.predict(token_list, verbose=0)[0]
-
-        predicted_proba[0] = 0
-        oov_index = tokenizer.word_index.get("<OOV>", -1)
-        if oov_index != -1:
-            predicted_proba[oov_index] = 0
-
-        predicted_proba = np.asarray(predicted_proba, dtype="float64")
-        predicted_proba = np.log(predicted_proba + 1e-7) / temperature
-        exp_preds = np.exp(predicted_proba)
-        predicted_proba = exp_preds / np.sum(exp_preds)
-
-        predicted_index = np.random.choice(
-            len(predicted_proba), p=predicted_proba)
-
-        output_word = ""
-        for word, idx in tokenizer.word_index.items():
-            if idx == predicted_index:
-                output_word = word
-                break
-
-        if output_word:
-            current_text += " " + output_word
-            predicted_words.append(output_word)
-        else:
-            break
-
-    return current_text, predicted_words
+    idx = np.random.choice(len(proba), p=proba)
+    return next((w for w, i in tokenizer.word_index.items() if i == idx), "")
 
 
 st.markdown("""
-<div class="cursor-nav">
-  <div class="cursor-nav-logo">
-    <span class="orange">✦</span> NextWord
-  </div>
-  <span class="cursor-nav-badge">LSTM · Shakespeare</span>
-</div>
-""", unsafe_allow_html=True)
-
-
-st.markdown("""
-<p class="hero-eyebrow">Deep Learning · NLP</p>
-<h1 class="hero-title">Predict the<br><span class="accent">next word.</span></h1>
+<div class="center"><h1 class="hero-title">Predict the <span class="accent">next word</span></h1>
 <p class="hero-sub">
-  A bi-layer LSTM trained on Shakespeare's <em>Hamlet</em> — 
-  type any seed phrase and watch the model complete your thought.
-</p>
+  A bi-layer LSTM trained on Shakespeare's <em>Hamlet</em>  
+  <br> Type any seed phrase and watch the model complete your thought.
+</p></div>
 """, unsafe_allow_html=True)
 
 
-with st.spinner("Loading model…"):
-    try:
-        model, tokenizer = load_artifacts()
-        vocab_size = len(tokenizer.word_index) + 1
-        model_loaded = True
-    except Exception as e:
-        model_loaded = False
-        load_error = str(e)
+seed_text = st.text_area(
+    "Seed phrase",
+    value="To be or not to be",
+    height=110,
+    placeholder="Enter a sentence or phrase…",
+)
+predict_btn = st.button("✦  Predict", use_container_width=True)
 
-
-with st.container():
-    seed_text = st.text_area(
-        "Seed phrase",
-        value="To be or not to be",
-        height=110,
-        placeholder="Enter a sentence or phrase…",
-        help="The model uses the last 6 words as context.",
-    )
-
-    col1, col2 = st.columns(2)
-    with col1:
-        n_words = st.number_input(
-            "Words to generate",
-            min_value=1, max_value=20, value=1, step=1,
-        )
-    with col2:
-        temperature = st.slider(
-            "Temperature",
-            min_value=0.1, max_value=2.0, value=0.3, step=0.05,
-        )
-        st.markdown(
-            '<div style="display:flex;justify-content:space-between;'
-            'font-size:11px;font-weight:600;letter-spacing:0.6px;'
-            'text-transform:uppercase;color:var(--muted);margin-top:-10px;">'
-            '<span>Deterministic</span><span>Creative</span></div>',
-            unsafe_allow_html=True,
-        )
-
-    predict_btn = st.button("✦  Predict", use_container_width=True)
-
-
+# ── inference ─────────────────────────────────────────────────────────────────
 if predict_btn:
     if not model_loaded:
         st.error(f"⚠ Could not load model: {load_error}")
@@ -485,41 +264,21 @@ if predict_btn:
         </div>
         """, unsafe_allow_html=True)
 
-        with st.spinner("Running inference…"):
+        with st.spinner("Predicting…"):
             try:
-                full_text, new_words = predict_next_word(
-                    seed_text.strip(), int(n_words), float(temperature),
-                    model, tokenizer,
-                )
-
-                st.markdown('<div class="timeline-row"><span class="tpill done">Done</span></div>',
-                            unsafe_allow_html=True)
-
+                word = predict_next_word(seed_text.strip())
                 seed_clean = seed_text.strip()
-                tail_section = full_text[len(seed_clean):]
-                tail_html = ""
-                for w in tail_section.split():
-                    tail_html += f' <span class="predicted-word">{w}</span>'
 
+                st.markdown(
+                    '<div class="timeline-row">'
+                    '<span class="tpill done">Done</span></div>',
+                    unsafe_allow_html=True,
+                )
                 st.markdown(f"""
                 <div class="result-card">
-                  <div class="result-header">
-                    <span class="result-title">Output</span>
-                  </div>
-                  <div class="result-text">{seed_clean}{tail_html}</div>
-                  <div class="metrics-row">
-                    <div class="metric-cell">
-                      <div class="metric-value">{len(new_words)}</div>
-                      <div class="metric-label">Words generated</div>
-                    </div>
-                    <div class="metric-cell">
-                      <div class="metric-value">{temperature}</div>
-                      <div class="metric-label">Temperature</div>
-                    </div>
-                    <div class="metric-cell">
-                      <div class="metric-value">{vocab_size:,}</div>
-                      <div class="metric-label">Vocab size</div>
-                    </div>
+                  <div class="result-title">Output</div>
+                  <div class="result-text">
+                    {seed_clean} <span class="predicted-word">{word}</span>
                   </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -527,7 +286,7 @@ if predict_btn:
             except Exception as e:
                 st.error(f"Prediction error: {e}")
 
-
+# ── footer ────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="cursor-footer">
   <span class="footer-left">Built with TensorFlow · Keras · Streamlit</span>
