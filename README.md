@@ -16,6 +16,8 @@ built end-to-end from raw corpus ingestion to a polished web interface.
 
 ---
 
+<img src="https://i.ibb.co/1JwbpFQj/718-1x-shots-so.png" alt="718 1x shots so" border="0">
+
 ## Overview
 
 This project trains a next-word language model on Shakespeare's _Hamlet_ using a stacked LSTM architecture. Given any seed phrase, the model predicts the most contextually plausible continuation — one word at a time — using temperature-controlled sampling. The entire pipeline — data collection, preprocessing, training, inference, and UI — lives in this single repository.
