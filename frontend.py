@@ -99,7 +99,11 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
   font-size: 56px; font-weight: 400; line-height: 1.1; width: 100%;
   letter-spacing: -1.68px; color: var(--ink); 
 }
-.hero-title .accent { color: var(--primary); }
+            .txt{
+            color: var(--primary);
+            }
+.accent { color: var(--primary); font-weight: 600;
+  background: rgba(245,78,0,0.07); border-radius: 4px; padding: 1px 5px; }
 .hero-sub {
   font-size: 16px; line-height: 1.6; color: var(--ink);
   max-width: 520px; margin-bottom: 48px;
@@ -233,9 +237,9 @@ def predict_next_word(seed_text: str) -> str:
 
 
 st.markdown("""
-<div class="center"><h1 class="hero-title">Predict the <span class="accent">next word</span></h1>
+<div class="center"><h1 class="hero-title">Predict the <span class="txt">next word</span></h1>
 <p class="hero-sub">
-  A bi-layer LSTM trained on Shakespeare's <em>Hamlet</em>  
+  A bi-layer <span class="accent">input to sequence </span>LSTM  trained on Shakespeare's <em>Hamlet</em>  
   <br> Type any seed phrase and watch the model complete your thought.
 </p></div>
 """, unsafe_allow_html=True)
